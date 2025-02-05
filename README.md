@@ -21,12 +21,18 @@ This is **Passify-Pro**: The most **elegant, revolutionary, and indispensable** 
 
 ## What Does This Thing Do? 🤔
 
-- **Generates Google Wallet Tickets**: That's right, **Google Wallet** passes on auto-pilot. 🎟️ We’ve automated it, so you don’t have to.
-- **Service Key Encryption**: You’ll upload your service account key, and we’ll **keep it encrypted** like it’s a **top-secret mission**. 🔐
-- **User Data? Yup!**: Your users' **name, email, phone number** – all the info you want, automatically pulled from WordPress and added to their passes. 📱
-- **QR Code Redemption**: Each ticket comes with a QR code for easy redemption. **Just scan and go**. So easy, your grandma could do it (if she were into event tickets). 📱➡️🛂
-- **Role-Based Redemption**: Want only **certain users** to redeem tickets? We’ve got you covered. Only the right roles get access. 🎟️🔒
-- **Metadata Mapping**: Dynamically populate event details like name, date, ticket number… You know, the important stuff. 🗓️
+- **Dynamic Pass Creation**: Create event passes for users who purchase specific products in WooCommerce.
+- **Product Category-Based Pass Generation**: Admins can select which product categories will trigger pass generation.
+- **Metadata Field Mapping**: Admins can map metadata fields to dynamically build wallet pass classes and objects based on WooCommerce order data.
+- **Decrypted Service Account Key Storage**: The service account key used to authenticate with Google Wallet is securely encrypted and only decrypted during API calls.
+- **Custom Expiration Date**: If no expiration date is provided, passes will have a default expiration date of one week after purchase.
+- **Rotating QR Codes**: The generated passes include rotating QR codes, which are used as redemption links.
+- **Secure Redemption Process**: Only authorized roles (e.g., employees) can redeem tickets through a custom redemption API, with strict security validation.
+
+### Admin Features:
+- **Admin Settings Page**: An interface where admins can upload the Google service account key, select metadata fields, and define which product categories should trigger pass generation.
+- **Log Viewing**: Admins can view logs detailing the creation and management of passes.
+- **Metadata Field Configuration**: Admins can select and create metadata fields to dynamically build Google Wallet passes.
 
 ## Installation 🛠️
 

@@ -1,3 +1,16 @@
+# ⚠️ Under Development ⚠️
+
+## Seeking Developers! 💻
+
+This project is currently under active development. We are looking for developers to contribute and help us make this project better!
+
+If you’re interested, feel free to reach out or open a pull request. 🙌
+
+⚠️ **Warning:** The current code may not be stable, and features are still being built. Please use with caution. ⚠️
+
+
+
+
 # Passify-Pro 🎟️💥
 
 Welcome to **Passify-Pro** – the **plugin that will change your life**. Seriously, who knew event tickets could be so sleek, so secure, and so easy? If **Google Wallet** tickets were a sport, we’d be *undefeated champions*. 🏆⚡

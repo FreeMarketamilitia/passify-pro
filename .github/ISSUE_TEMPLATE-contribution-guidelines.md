@@ -1,12 +1,3 @@
----
-name: "Contribution Guidelines"
-about: "Provide guidelines for contributing to this project."
-title: 'Contribution Guidelines'
-labels: 'documentation'
-assignees: ''
-
----
-
 # Contributing to passify-pro
 
 Thank you for considering contributing to this project! Here are some guidelines to help you get started.

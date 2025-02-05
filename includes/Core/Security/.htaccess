@@ -1,0 +1,8 @@
+# Deny direct access to keys and logs
+<FilesMatch "\.(key|log)">
+  Order Allow,Deny
+  Deny from all
+</FilesMatch>
+
+# Disable directory listing
+Options -Indexes

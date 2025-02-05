@@ -1,0 +1,8 @@
+# Disable direct access to files in the includes directory
+<FilesMatch "(composer.json|passify-pro.php|uninstall.php)">
+  Order Allow,Deny
+  Deny from all
+</FilesMatch>
+
+# Disable directory listing
+Options -Indexes

@@ -1,0 +1,108 @@
+/* General Admin Page Styles */
+.wrap h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+/* Card container for a clean layout */
+.card-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.card {
+    background-color: #f9f9f9;
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    padding: 20px;
+    width: 100%;
+    max-width: 500px;
+    box-sizing: border-box;
+}
+
+.card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.card p.description {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* File upload styling */
+input[type="file"] {
+    display: inline-block;
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+#error-message {
+    color: red;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+/* Metadata Field Mapping Styles */
+.metadata-field-mapping {
+    margin-bottom: 15px;
+}
+
+.metadata-field-mapping label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.metadata-field-mapping select {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+/* Description under inputs */
+.card select, .card input[type="file"] {
+    font-size: 1rem;
+}
+
+/* Ticket Validation Roles Styles */
+select[multiple] {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    height: auto;
+}
+
+/* Submit Button Styling */
+button[type="submit"] {
+    background-color: #0073aa;
+    border: none;
+    padding: 10px 20px;
+    color: #fff;
+    font-size: 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button[type="submit"]:hover {
+    background-color: #006799;
+}
+
+/* Error Message Styling */
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}

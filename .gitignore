@@ -1,0 +1,19 @@
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE and editor-specific files
+.idea/
+.vscode/
+
+# Ignore vendor directory (if using Composer)
+/vendor/
+
+# Ignore compiled files and logs
+*.log
+*.tmp
+*.cache
+
+# Ignore Security Keys
+/includes/Core/Security/keys/*
+

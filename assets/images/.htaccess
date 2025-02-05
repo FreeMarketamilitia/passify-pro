@@ -1,0 +1,8 @@
+# Deny access to images if you want to restrict them
+<FilesMatch ".*">
+  Order Allow,Deny
+  Deny from all
+</FilesMatch>
+
+# Disable directory listing
+Options -Indexes

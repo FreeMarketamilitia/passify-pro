@@ -113,7 +113,6 @@ If you’d like to contribute, here’s how you can get started:
 
 If you have any questions or need help, feel free to reach out! We’re always happy to assist. You can contact us at:
 
-- **Email**: contact@passifypro.com
 - **GitHub Discussions**: [link to discussions page](https://github.com/freemarketamilita/passify-pro/discussions)
 
 ---

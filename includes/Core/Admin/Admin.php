@@ -36,7 +36,7 @@ class AdminSettingsPage {
         ?>
         <div class="wrap">
             <h1>Passify Pro Settings</h1>
-            <?php if(isset($_GET['settings-updated']) && $_GET['settings-updated'] == 'true'): ?>
+            <?php if (isset($_GET['settings-updated']) && $_GET['settings-updated'] == 'true'): ?>
                 <div class="notice notice-success is-dismissible">
                     <p>Settings updated successfully.</p>
                 </div>
@@ -49,6 +49,16 @@ class AdminSettingsPage {
                 submit_button();
                 ?>
             </form>
+
+            <!-- Additional Tools Section -->
+            <div class="passifypro-admin-links">
+                <h2>Additional Tools</h2>
+                <p>
+                    <a href="<?php echo esc_url(home_url('?passifypro_qrscanner=1')); ?>" target="_blank">
+                        Open QR Scanner
+                    </a>
+                </p>
+            </div>
         </div>
         <?php
     }

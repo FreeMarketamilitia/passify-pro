@@ -1,8 +1,8 @@
 ---
-name: " Contribution Guidelines"
-about: Describe this issue template's purpose here.
-title: ''
-labels: ''
+name: "Contribution Guidelines"
+about: "Provide guidelines for contributing to this project."
+title: 'Contribution Guidelines'
+labels: 'documentation'
 assignees: ''
 
 ---

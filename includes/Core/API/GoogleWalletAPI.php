@@ -14,7 +14,8 @@ use InvalidArgumentException;
 class GoogleWalletAPI {
     private SecurityHandler $securityHandler;
     private Debugger $debugger;
-    private Google_Service_Walletobjects $walletService;
+    /** @var Google_Service_Walletobjects|null */
+    private ?Google_Service_Walletobjects $walletService = null;
     private string $issuerId;
     private array $metadataMappings;
     private array $productCategories;
@@ -29,7 +30,19 @@ class GoogleWalletAPI {
         }
         $this->metadataMappings = get_option('metadata_fields', []);
         $this->productCategories = get_option('product_categories', []);
-        $this->initializeGoogleClient();
+        // Note: We are NOT initializing the Google client here.
+    }
+
+    /**
+     * Lazy-loads and returns the Google Wallet Service.
+     *
+     * @return Google_Service_Walletobjects
+     */
+    private function getWalletService(): Google_Service_Walletobjects {
+        if ($this->walletService === null) {
+            $this->initializeGoogleClient();
+        }
+        return $this->walletService;
     }
 
     /**
@@ -85,7 +98,6 @@ class GoogleWalletAPI {
      * @return array The purchaser data including first name, last name, email, and phone.
      */
     private function getPurchaserData(int $userId, array $orderData): array {
-        // Check for WooCommerce billing fields in the order data.
         $firstName = isset($orderData['billing_first_name']) && !empty($orderData['billing_first_name'])
             ? $orderData['billing_first_name']
             : null;
@@ -99,7 +111,6 @@ class GoogleWalletAPI {
             ? $orderData['billing_phone']
             : null;
 
-        // If any of the fields are missing, fall back to the WordPress user data.
         if (!$firstName || !$lastName || !$email) {
             $user = get_userdata($userId);
             $firstName = $firstName ?: $this->securityHandler->sanitizeString($user->first_name);
@@ -107,7 +118,6 @@ class GoogleWalletAPI {
             $email = $email ?: $this->securityHandler->sanitizeEmail($user->user_email);
             $phone = $phone ?: $this->securityHandler->sanitizeString(get_user_meta($userId, 'billing_phone', true) ?? '');
         } else {
-            // Sanitize order data fields
             $firstName = $this->securityHandler->sanitizeString($firstName);
             $lastName = $this->securityHandler->sanitizeString($lastName);
             $email = $this->securityHandler->sanitizeEmail($email);
@@ -131,7 +141,7 @@ class GoogleWalletAPI {
     private function ensurePassClassExists(string $category, array $data): string {
         $classId = "{$this->issuerId}.{$category}";
         try {
-            return $this->walletService->eventTicketClass->get($classId)->getId();
+            return $this->getWalletService()->eventTicketClass->get($classId)->getId();
         } catch (Google_Service_Exception $e) {
             if ($e->getCode() !== 404) {
                 $this->handleGoogleError($e);
@@ -162,7 +172,7 @@ class GoogleWalletAPI {
             'issuerName' => get_bloginfo('name')
         ]);
         try {
-            return $this->walletService->eventTicketClass->insert($class)->getId();
+            return $this->getWalletService()->eventTicketClass->insert($class)->getId();
         } catch (Google_Service_Exception $e) {
             $this->handleGoogleError($e);
         }
@@ -196,7 +206,7 @@ class GoogleWalletAPI {
             ]
         ]);
         try {
-            return $this->walletService->eventTicketObject->insert($passObject)->getSecureUrl();
+            return $this->getWalletService()->eventTicketObject->insert($passObject)->getSecureUrl();
         } catch (Google_Service_Exception $e) {
             $this->handleGoogleError($e);
         }
@@ -212,15 +222,15 @@ class GoogleWalletAPI {
      */
     private function mapFields(array $purchaserData, array $orderData): array {
         return [
-            'event_name'     => $this->getMappedValue('class_id', $orderData) ?: 'Default Event',
-            'venue_name'     => $this->getMappedValue('venue_name', $orderData) ?: 'Default Venue',
-            'event_time'     => $this->formatDateTime($this->getMappedValue('event_time', $orderData) ?: time()),
-            'ticket_number'  => $this->getMappedValue('ticket_number', $orderData) ?: bin2hex(random_bytes(8)),
-            'expiration_date'=> $this->formatDateTime($this->getMappedValue('expiration_date', $orderData) ?: '+1 week'),
-            'first_name'     => $purchaserData['first_name'],
-            'last_name'      => $purchaserData['last_name'],
-            'email'          => $purchaserData['email'],
-            'phone'          => $purchaserData['phone'] ?? ''
+            'event_name'      => $this->getMappedValue('class_id', $orderData) ?: 'Default Event',
+            'venue_name'      => $this->getMappedValue('venue_name', $orderData) ?: 'Default Venue',
+            'event_time'      => $this->formatDateTime($this->getMappedValue('event_time', $orderData) ?: time()),
+            'ticket_number'   => $this->getMappedValue('ticket_number', $orderData) ?: bin2hex(random_bytes(8)),
+            'expiration_date' => $this->formatDateTime($this->getMappedValue('expiration_date', $orderData) ?: '+1 week'),
+            'first_name'      => $purchaserData['first_name'],
+            'last_name'       => $purchaserData['last_name'],
+            'email'           => $purchaserData['email'],
+            'phone'           => $purchaserData['phone'] ?? ''
         ];
     }
 

@@ -24,7 +24,6 @@ if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
 // If you're not using an autoloader, you can require your class files manually here.
  require_once __DIR__ . '/includes/Core/Security/Debugger.php';
  require_once __DIR__ . '/includes/Core/Security/SecurityHandler.php';
- require_once __DIR__ . '/includes/Core/API/GoogleWalletAPI.php';
  require_once __DIR__ . '/includes/Core/Admin/Admin.php';
  require_once __DIR__ . '/includes/Core/Redemption/Redemption.php';
  require_once __DIR__ . '/includes/Core/QR/QRScanner.php';
@@ -47,8 +46,7 @@ final class PassifyPro {
     /** @var \PassifyPro\Core\Security\Debugger */
     private $debugger;
 
-    /** @var \PassifyPro\Core\API\GoogleWalletAPI */
-    private $googleWalletAPI;
+ 
 
     /** @var \PassifyPro\Core\Admin\AdminSettingsPage */
     private $adminSettingsPage;
@@ -66,7 +64,6 @@ final class PassifyPro {
         // Instantiate dependencies.
         $this->debugger = new \PassifyPro\Core\Security\Debugger();
         $this->securityHandler = new \PassifyPro\Core\Security\SecurityHandler($this->debugger);
-        $this->googleWalletAPI = new \PassifyPro\Core\API\GoogleWalletAPI($this->securityHandler, $this->debugger);
 
         // Initialize admin, redemption and QR scanner components.
         $this->adminSettingsPage = new \PassifyPro\Core\Admin\AdminSettingsPage($this->securityHandler, $this->debugger);

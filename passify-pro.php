@@ -14,18 +14,20 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly.
 }
 
+
+
 // Optionally, load the Composer autoloader if you have one.
 if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
 
 // If you're not using an autoloader, you can require your class files manually here.
-// require_once __DIR__ . '/src/Core/Security/Debugger.php';
-// require_once __DIR__ . '/src/Core/Security/SecurityHandler.php';
-// require_once __DIR__ . '/src/Core/API/GoogleWalletAPI.php';
-// require_once __DIR__ . '/src/Core/Admin/AdminSettingsPage.php';
-// require_once __DIR__ . '/src/Core/Redemption/Redemption.php';
-// require_once __DIR__ . '/src/Core/QR/QRScanner.php';
+ require_once __DIR__ . '/includes/Core/Security/Debugger.php';
+ require_once __DIR__ . '/includes/Core/Security/SecurityHandler.php';
+ require_once __DIR__ . '/includes/Core/API/GoogleWalletAPI.php';
+ require_once __DIR__ . '/includes/Core/Admin/Admin.php';
+ require_once __DIR__ . '/includes/Core/Redemption/Redemption.php';
+ require_once __DIR__ . '/includes/Core/QR/QRScanner.php';
 
 /**
  * Main Passify Pro Plugin Class.

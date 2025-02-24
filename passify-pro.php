@@ -10,34 +10,31 @@ License:     GPL2
 Text Domain: passify-pro
 */
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-
-
-// Optionally, load the Composer autoloader if you have one.
-if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
+// Load Composer autoloader if it exists
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
 
-// If you're not using an autoloader, you can require your class files manually here.
- require_once __DIR__ . '/includes/Core/Security/Debugger.php';
- require_once __DIR__ . '/includes/Core/Security/SecurityHandler.php';
- require_once __DIR__ . '/includes/Core/Admin/Admin.php';
- require_once __DIR__ . '/includes/Core/Redemption/Redemption.php';
- require_once __DIR__ . '/includes/Core/QR/QRScanner.php';
+// Manually require core classes
+require_once __DIR__ . '/includes/Core/Security/Debugger.php';
+require_once __DIR__ . '/includes/Core/Security/SecurityHandler.php';
+require_once __DIR__ . '/includes/Core/Admin/Admin.php';
+require_once __DIR__ . '/includes/Core/Redemption/Redemption.php';
+require_once __DIR__ . '/includes/Core/QR/QRScanner.php';
+require_once __DIR__ . '/includes/Core/API/GoogleWalletAPI.php';
+require_once __DIR__ . '/includes/Core/Email/Emails.php'; // Added Emails.php
 
 /**
  * Main Passify Pro Plugin Class.
- *
- * Initializes all components of the plugin.
+ * Initializes all components of the plugin using the singleton pattern.
  */
 final class PassifyPro {
 
-    /**
-     * @var PassifyPro
-     */
+    /** @var PassifyPro */
     private static $instance;
 
     /** @var \PassifyPro\Core\Security\SecurityHandler */
@@ -46,7 +43,8 @@ final class PassifyPro {
     /** @var \PassifyPro\Core\Security\Debugger */
     private $debugger;
 
- 
+    /** @var \PassifyPro\Core\API\GoogleWalletAPI */
+    private $googleWalletAPI;
 
     /** @var \PassifyPro\Core\Admin\AdminSettingsPage */
     private $adminSettingsPage;
@@ -57,20 +55,25 @@ final class PassifyPro {
     /** @var \PassifyPro\Core\QR\QRScanner */
     private $qrScanner;
 
+    /** @var \PassifyPro\Core\Email\Emails */
+    private $emails;
+
     /**
      * Private constructor to enforce singleton pattern.
      */
     private function __construct() {
-        // Instantiate dependencies.
+        // Instantiate dependencies
         $this->debugger = new \PassifyPro\Core\Security\Debugger();
         $this->securityHandler = new \PassifyPro\Core\Security\SecurityHandler($this->debugger);
+        $this->googleWalletAPI = new \PassifyPro\Core\API\GoogleWalletAPI($this->securityHandler, $this->debugger);
 
-        // Initialize admin, redemption and QR scanner components.
+        // Initialize components
         $this->adminSettingsPage = new \PassifyPro\Core\Admin\AdminSettingsPage($this->securityHandler, $this->debugger);
-        $this->redemption         = new \PassifyPro\Core\Redemption\Redemption($this->securityHandler, $this->debugger, $this->googleWalletAPI);
-        $this->qrScanner          = new \PassifyPro\Core\QR\QRScanner($this->securityHandler, $this->debugger);
+        $this->redemption = new \PassifyPro\Core\Redemption\Redemption($this->securityHandler, $this->debugger, $this->googleWalletAPI);
+        $this->qrScanner = new \PassifyPro\Core\QR\QRScanner($this->securityHandler, $this->debugger);
+        $this->emails = new \PassifyPro\Core\Email\Emails($this->securityHandler, $this->debugger, $this->googleWalletAPI);
 
-        // Load text domain for translations.
+        // Load text domain for translations
         add_action('plugins_loaded', [$this, 'loadTextDomain']);
     }
 
@@ -94,7 +97,7 @@ final class PassifyPro {
     }
 }
 
-// Initialize the plugin.
+// Initialize the plugin
 function passifypro() {
     return PassifyPro::instance();
 }

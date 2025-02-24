@@ -12,13 +12,15 @@ class Debugger
     private Logger $logger;
     private string $logPath;
 
-    public function __construct()
-    {
-        $this->logPath = plugin_dir_path(__DIR__) . 'Security/logs/';
-        $this->verifyLogDirectory();
-        $this->initializeLogger();
+    public function __construct() {
+        $this->logger = new Logger('passify-pro');
+            
+        try {
+            // Some code that might fail
+        } catch (Exception $e) {
+            $this->logError($e->getMessage()); // Now safe to use $logger
+        }
     }
-
     /**
      * Verify that the log directory exists and is writable.
      */

@@ -20,5 +20,5 @@
             "PassifyPro\\": "includes/"
         }
     },
-    "minimum-stability": "unstable"
+    "minimum-stability": "stable"
 }

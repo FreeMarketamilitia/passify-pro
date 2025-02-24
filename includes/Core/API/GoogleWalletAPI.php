@@ -23,21 +23,25 @@ class GoogleWalletAPI {
     public function __construct(SecurityHandler $securityHandler, Debugger $debugger) {
         $this->securityHandler = $securityHandler;
         $this->debugger = $debugger;
-        // Pull the issuer ID from the admin settings.
-        $this->issuerId = get_option('google_issuer_id', '');
+
+        $this->issuerId = (string) get_option('google_issuer_id', '');
         if (empty($this->issuerId)) {
             $this->debugger->logError("Issuer ID is not set in admin settings.");
         }
-        $this->metadataMappings = get_option('metadata_fields', []);
-        $this->productCategories = get_option('product_categories', []);
-        // Note: We are NOT initializing the Google client here.
+
+        $metadataFields = get_option('metadata_fields', []);
+        $this->metadataMappings = is_array($metadataFields) ? $metadataFields : [];
+        if (!is_array($metadataFields)) {
+            $this->debugger->logError("metadata_fields option is not an array; defaulted to empty array.");
+        }
+
+        $productCats = get_option('product_categories', []);
+        $this->productCategories = is_array($productCats) ? array_map('absint', $productCats) : [];
+        if (!is_array($productCats)) {
+            $this->debugger->logError("product_categories option is not an array; defaulted to empty array.");
+        }
     }
 
-    /**
-     * Lazy-loads and returns the Google Wallet Service.
-     *
-     * @return Google_Service_Walletobjects
-     */
     private function getWalletService(): Google_Service_Walletobjects {
         if ($this->walletService === null) {
             $this->initializeGoogleClient();
@@ -45,11 +49,6 @@ class GoogleWalletAPI {
         return $this->walletService;
     }
 
-    /**
-     * Initialize the Google Client using the decrypted service account JSON.
-     * This method sets up the client with JWT authentication and creates
-     * the Wallet Service instance.
-     */
     private function initializeGoogleClient(): void {
         $serviceAccount = $this->securityHandler->getServiceAccountKeys();
         if (empty($serviceAccount)) {
@@ -57,10 +56,8 @@ class GoogleWalletAPI {
         }
 
         $client = new Google_Client();
-        // Pass the service account credentials (decrypted JSON) to the client.
         $client->setAuthConfig($serviceAccount);
         $client->setScopes([Google_Service_Walletobjects::WALLET_OBJECT_ISSUER]);
-        // Automatically fetch an access token using the JWT assertion flow.
         $token = $client->fetchAccessTokenWithAssertion();
         if (isset($token['error'])) {
             $this->debugger->logError("Google API Authentication Error", $token);
@@ -69,47 +66,45 @@ class GoogleWalletAPI {
         $this->walletService = new Google_Service_Walletobjects($client);
     }
 
-    /**
-     * Create a Google Wallet pass based on a purchase.
-     *
-     * @param int   $userId    The purchaser's user ID.
-     * @param array $orderData WooCommerce order data including billing details and product category.
-     * @return string URL to the created pass.
-     */
-    public function createPassForPurchase(int $userId, array $orderData): string {
+    public function createPassForPurchase(int $userId, array $orderData): array {
         $productCategory = $this->getProductCategoryFromOrder($orderData);
         if (!$this->isValidProductCategory($productCategory)) {
-            throw new InvalidArgumentException('Product category not enabled for pass generation.');
+            throw new InvalidArgumentException('Product category not enabled for pass generation: ' . $productCategory);
         }
-        // Use WooCommerce order data for purchaser details with a fallback to user data.
         $purchaserData = $this->getPurchaserData($userId, $orderData);
         $mappedData = $this->mapFields($purchaserData, $orderData);
 
         $classId = $this->ensurePassClassExists($productCategory, $mappedData);
-        return $this->createPassObject($userId, $classId, $mappedData);
+        $passData = $this->createPassObject($userId, $classId, $mappedData);
+
+        if (isset($orderData['order_id'])) {
+            update_post_meta($orderData['order_id'], 'pass_object_id', $passData['object_id']);
+            update_post_meta($orderData['order_id'], 'pass_ticket_number', $mappedData['ticket_number']);
+        }
+        return $passData;
     }
 
-    /**
-     * Combines WooCommerce order billing data with WordPress user data.
-     * Uses order data for billing details if available; otherwise falls back to the user profile.
-     *
-     * @param int   $userId    The user ID.
-     * @param array $orderData WooCommerce order data.
-     * @return array The purchaser data including first name, last name, email, and phone.
-     */
+    public function getPassObject(string $objectId): Google_Service_Walletobjects_EventTicketObject {
+        try {
+            return $this->getWalletService()->eventTicketObject->get($objectId);
+        } catch (Google_Service_Exception $e) {
+            $this->handleGoogleError($e);
+        }
+    }
+
+    public function updatePassObject(string $objectId, Google_Service_Walletobjects_EventTicketObject $patchData): void {
+        try {
+            $this->getWalletService()->eventTicketObject->patch($objectId, $patchData);
+        } catch (Google_Service_Exception $e) {
+            $this->handleGoogleError($e);
+        }
+    }
+
     private function getPurchaserData(int $userId, array $orderData): array {
-        $firstName = isset($orderData['billing_first_name']) && !empty($orderData['billing_first_name'])
-            ? $orderData['billing_first_name']
-            : null;
-        $lastName = isset($orderData['billing_last_name']) && !empty($orderData['billing_last_name'])
-            ? $orderData['billing_last_name']
-            : null;
-        $email = isset($orderData['billing_email']) && !empty($orderData['billing_email'])
-            ? $orderData['billing_email']
-            : null;
-        $phone = isset($orderData['billing_phone']) && !empty($orderData['billing_phone'])
-            ? $orderData['billing_phone']
-            : null;
+        $firstName = $orderData['billing_first_name'] ?? null;
+        $lastName = $orderData['billing_last_name'] ?? null;
+        $email = $orderData['billing_email'] ?? null;
+        $phone = $orderData['billing_phone'] ?? null;
 
         if (!$firstName || !$lastName || !$email) {
             $user = get_userdata($userId);
@@ -125,19 +120,12 @@ class GoogleWalletAPI {
         }
         return [
             'first_name' => $firstName,
-            'last_name'  => $lastName,
-            'email'      => $email,
-            'phone'      => $phone
+            'last_name' => $lastName,
+            'email' => $email,
+            'phone' => $phone
         ];
     }
 
-    /**
-     * Ensures that the pass class exists in Google Wallet. If not, creates it.
-     *
-     * @param string $category The product category.
-     * @param array  $data     Mapped data for the pass.
-     * @return string The pass class ID.
-     */
     private function ensurePassClassExists(string $category, array $data): string {
         $classId = "{$this->issuerId}.{$category}";
         try {
@@ -150,13 +138,6 @@ class GoogleWalletAPI {
         }
     }
 
-    /**
-     * Creates a new pass class in Google Wallet.
-     *
-     * @param string $classId The new class ID.
-     * @param array  $data    Data used to create the class.
-     * @return string The new class ID.
-     */
     private function createNewPassClass(string $classId, array $data): string {
         $class = new Google_Service_Walletobjects_EventTicketClass([
             'id' => $classId,
@@ -178,15 +159,7 @@ class GoogleWalletAPI {
         }
     }
 
-    /**
-     * Creates the pass object in Google Wallet and returns its secure URL.
-     *
-     * @param int    $userId  The purchaser's user ID.
-     * @param string $classId The pass class ID.
-     * @param array  $data    Mapped data for the pass.
-     * @return string The secure URL for the created pass.
-     */
-    private function createPassObject(int $userId, string $classId, array $data): string {
+    private function createPassObject(int $userId, string $classId, array $data): array {
         $objectId = "{$classId}.{$userId}." . uniqid();
         $passObject = new Google_Service_Walletobjects_EventTicketObject([
             'id' => $objectId,
@@ -194,93 +167,93 @@ class GoogleWalletAPI {
             'state' => 'ACTIVE',
             'ticketHolder' => [
                 'firstName' => $data['first_name'],
-                'lastName'  => $data['last_name'],
-                'email'     => $data['email'],
-                'phone'     => $data['phone'] ?? ''
+                'lastName' => $data['last_name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'] ?? ''
             ],
             'ticketNumber' => $data['ticket_number'],
             'expirationDate' => $data['expiration_date'],
             'barcode' => [
-                'type'  => 'QR_CODE',
+                'type' => 'QR_CODE',
                 'value' => $data['ticket_number']
             ]
         ]);
         try {
-            return $this->getWalletService()->eventTicketObject->insert($passObject)->getSecureUrl();
+            $insertedObject = $this->getWalletService()->eventTicketObject->insert($passObject);
+            $saveLink = $this->generateSaveLink($insertedObject->getId());
+            return [
+                'object_id' => $insertedObject->getId(),
+                'save_link' => $saveLink
+            ];
         } catch (Google_Service_Exception $e) {
             $this->handleGoogleError($e);
         }
     }
 
-    /**
-     * Map fields from the order and purchaser data based on the admin-defined metadata mappings.
-     * Provides fallback values for required fields if they are missing.
-     *
-     * @param array $purchaserData Purchaser data.
-     * @param array $orderData     Order data.
-     * @return array Mapped data.
-     */
+    private function generateSaveLink(string $objectId): string {
+        $serviceAccount = $this->securityHandler->getServiceAccountKeys();
+        if (empty($serviceAccount)) {
+            throw new RuntimeException('Service account keys not available.');
+        }
+        $clientEmail = $serviceAccount['client_email'];
+        $privateKey = $serviceAccount['private_key'];
+
+        $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
+        $payload = json_encode([
+            'iss' => $clientEmail,
+            'aud' => 'google',
+            'typ' => 'savetowallet',
+            'iat' => time(),
+            'origins' => [home_url()],
+            'payload' => [
+                'eventTicketObjects' => [
+                    ['id' => $objectId]
+                ]
+            ]
+        ]);
+        $base64Header = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+        $base64Payload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
+        $unsignedJwt = $base64Header . '.' . $base64Payload;
+        openssl_sign($unsignedJwt, $signature, $privateKey, 'SHA256');
+        $jwt = $unsignedJwt . '.' . str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+        return "https://pay.google.com/gp/v/save/{$jwt}";
+    }
+
     private function mapFields(array $purchaserData, array $orderData): array {
         return [
-            'event_name'      => $this->getMappedValue('class_id', $orderData) ?: 'Default Event',
-            'venue_name'      => $this->getMappedValue('venue_name', $orderData) ?: 'Default Venue',
-            'event_time'      => $this->formatDateTime($this->getMappedValue('event_time', $orderData) ?: time()),
-            'ticket_number'   => $this->getMappedValue('ticket_number', $orderData) ?: bin2hex(random_bytes(8)),
+            'event_name' => $this->getMappedValue('class_id', $orderData) ?: 'Default Event',
+            'venue_name' => $this->getMappedValue('venue_name', $orderData) ?: 'Default Venue',
+            'event_time' => $this->formatDateTime($this->getMappedValue('event_time', $orderData) ?: time()),
+            'ticket_number' => $this->getMappedValue('ticket_number', $orderData) ?: bin2hex(random_bytes(8)),
             'expiration_date' => $this->formatDateTime($this->getMappedValue('expiration_date', $orderData) ?: '+1 week'),
-            'first_name'      => $purchaserData['first_name'],
-            'last_name'       => $purchaserData['last_name'],
-            'email'           => $purchaserData['email'],
-            'phone'           => $purchaserData['phone'] ?? ''
+            'first_name' => $purchaserData['first_name'],
+            'last_name' => $purchaserData['last_name'],
+            'email' => $purchaserData['email'],
+            'phone' => $purchaserData['phone'] ?? ''
         ];
     }
 
-    /**
-     * Returns the mapped value for a given field if defined.
-     *
-     * @param string $field The admin-defined key.
-     * @param array  $data  The source data.
-     * @return mixed|null The mapped value or null if not set.
-     */
     private function getMappedValue(string $field, array $data) {
         $mappedField = $this->metadataMappings[$field] ?? null;
         return $mappedField ? ($data[$mappedField] ?? null) : null;
     }
 
-    /**
-     * Formats a date/time value to the required ISO 8601 format.
-     *
-     * @param mixed $input A UNIX timestamp or a date/time string.
-     * @return string The formatted date/time string.
-     */
     private function formatDateTime($input): string {
         return date('Y-m-d\TH:i:sP', is_numeric($input) ? $input : strtotime($input));
     }
 
-    /**
-     * Extracts the product category from the order data.
-     *
-     * @param array $orderData The order data.
-     * @return string The product category.
-     */
     private function getProductCategoryFromOrder(array $orderData): string {
+        // Expecting a slug or name here; could be adjusted based on how order data is structured
         return $orderData['product_category'] ?? '';
     }
 
-    /**
-     * Checks if the product category is enabled for pass generation.
-     *
-     * @param string $category The product category.
-     * @return bool True if valid; otherwise false.
-     */
     private function isValidProductCategory(string $category): bool {
-        return in_array($category, $this->productCategories);
+        // Convert the category string (slug or name) to a term ID
+        $term = get_term_by('slug', $category, 'product_cat') ?: get_term_by('name', $category, 'product_cat');
+        $categoryId = $term ? (int) $term->term_id : 0;
+        return in_array($categoryId, $this->productCategories);
     }
 
-    /**
-     * Handles errors from the Google Wallet API by logging and throwing an exception.
-     *
-     * @param \Google_Service_Exception $e The exception thrown by the Google API.
-     */
     private function handleGoogleError(Google_Service_Exception $e): void {
         $error = json_decode($e->getMessage(), true);
         $message = $error['error']['message'] ?? 'Google Wallet API error';

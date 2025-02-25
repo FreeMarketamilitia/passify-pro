@@ -20,17 +20,14 @@ class SecurityHandler
     public function __construct(Debugger $debugger)
     {
         $this->debugger = $debugger;
-        // Define key storage path (ensure trailing slash)
         $this->keyPath = plugin_dir_path(__DIR__) . 'Security/keys/';
+        $this->debugger->logOperation("SecurityHandler constructed", "SecurityHandler", ['keyPath' => $this->keyPath]);
         $this->initializeKeyStorage();
         $this->initializeEncryption();
         $this->initializeSanitizer();
         $this->loadServiceAccountKeys();
     }
 
-    /**
-     * Ensure that the directory for encryption keys exists.
-     */
     private function initializeKeyStorage(): void
     {
         try {
@@ -42,9 +39,6 @@ class SecurityHandler
         }
     }
 
-    /**
-     * Initialize the encryption key.
-     */
     private function initializeEncryption(): void
     {
         try {
@@ -61,9 +55,6 @@ class SecurityHandler
         }
     }
 
-    /**
-     * Initialize HTML Purifier for input sanitization.
-     */
     private function initializeSanitizer(): void
     {
         $config = HTMLPurifier_Config::createDefault();
@@ -71,12 +62,6 @@ class SecurityHandler
         $this->purifier = new HTMLPurifier($config);
     }
 
-    /**
-     * Encrypts data using Defuse\Crypto.
-     *
-     * @param string $data The plain text data to encrypt.
-     * @return string The encrypted ciphertext.
-     */
     public function encryptData(string $data): string
     {
         try {
@@ -88,18 +73,6 @@ class SecurityHandler
         }
     }
 
-    /**
-     * Decrypts an encrypted string using Defuse\Crypto.
-     *
-     * How it works:
-     * - Receives the encrypted ciphertext (which is a JSON string encrypted).
-     * - Uses the stored encryption key to attempt decryption.
-     * - On success, returns the decrypted plaintext JSON.
-     * - On failure, logs the error and returns an empty string.
-     *
-     * @param string $ciphertext The encrypted data.
-     * @return string The decrypted plain text (JSON string).
-     */
     public function decryptData(string $ciphertext): string
     {
         try {
@@ -111,94 +84,20 @@ class SecurityHandler
         }
     }
 
-    /**
-     * Sanitize a simple text string.
-     */
-    public function sanitizeString(string $input): string
-    {
-        return sanitize_text_field($input);
-    }
-
-    /**
-     * Sanitize an email address.
-     */
-    public function sanitizeEmail(string $email): string
-    {
-        return sanitize_email($email);
-    }
-
-    /**
-     * Sanitize a URL.
-     */
-    public function sanitizeURL(string $url): string
-    {
-        return esc_url_raw($url);
-    }
-
-    /**
-     * Sanitize HTML input.
-     */
-    public function sanitizeHTML(string $html): string
-    {
-        return $this->purifier->purify($html);
-    }
-
-    /**
-     * Sanitize textarea input.
-     */
-    public function sanitizeTextarea(string $text): string
-    {
-        return sanitize_textarea_field($text);
-    }
-
-    /**
-     * Sanitize an integer.
-     */
-    public function sanitizeInteger($number): int
-    {
-        return intval($number);
-    }
-
-    /**
-     * Sanitize a float.
-     */
-    public function sanitizeFloat($number): float
-    {
-        return floatval($number);
-    }
-
-    /**
-     * Sanitize a boolean.
-     */
-    public function sanitizeBoolean($value): bool
-    {
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
-    }
-
-    /**
-     * Sanitize an array of text fields.
-     */
-    public function sanitizeArray(array $input): array
-    {
-        return array_map('sanitize_text_field', $input);
-    }
-
-    /**
-     * Decode and sanitize a JSON string.
-     */
-    public function sanitizeJSON(string $json): ?array
-    {
+    public function sanitizeString(string $input): string { return sanitize_text_field($input); }
+    public function sanitizeEmail(string $email): string { return sanitize_email($email); }
+    public function sanitizeURL(string $url): string { return esc_url_raw($url); }
+    public function sanitizeHTML(string $html): string { return $this->purifier->purify($html); }
+    public function sanitizeTextarea(string $text): string { return sanitize_textarea_field($text); }
+    public function sanitizeInteger($number): int { return intval($number); }
+    public function sanitizeFloat($number): float { return floatval($number); }
+    public function sanitizeBoolean($value): bool { return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false; }
+    public function sanitizeArray(array $input): array { return array_map('sanitize_text_field', $input); }
+    public function sanitizeJSON(string $json): ?array {
         $decoded = json_decode($json, true);
         return is_array($decoded) ? $this->sanitizeArray($decoded) : null;
     }
 
-    /**
-     * Validates and sanitizes an uploaded file.
-     * Only allows specific mime types.
-     *
-     * @param array $file The uploaded file array.
-     * @return array|null The sanitized file info or null on failure.
-     */
     public function sanitizeFileUpload(array $file): ?array
     {
         $allowedMimeTypes = ['application/json', 'image/jpeg', 'image/png', 'application/pdf'];
@@ -215,9 +114,6 @@ class SecurityHandler
         return null;
     }
 
-    /**
-     * Loads the encrypted service account keys from storage.
-     */
     private function loadServiceAccountKeys(): void
     {
         try {
@@ -228,18 +124,17 @@ class SecurityHandler
                 if (!empty($decryptedJson)) {
                     $this->serviceAccountKeys = json_decode($decryptedJson, true);
                     $this->debugger->logSecurityEvent("Encrypted service account keys loaded");
+                } else {
+                    $this->debugger->logError("Decrypted service account keys are empty", ['file' => $keyFile]);
                 }
+            } else {
+                $this->debugger->logOperation("No service account key file found at $keyFile", "SecurityHandler");
             }
         } catch (Throwable $e) {
             $this->debugger->logError("Service Account Key Loading Error", ['exception' => $e->getMessage()]);
         }
     }
 
-    /**
-     * Encrypts and stores the service account keys.
-     *
-     * @param array $keys The service account keys array.
-     */
     public function storeServiceAccountKeys(array $keys): void
     {
         try {
@@ -256,13 +151,11 @@ class SecurityHandler
         }
     }
 
-    /**
-     * Retrieve the decrypted service account keys.
-     *
-     * @return array|null The service account keys array or null if not loaded.
-     */
     public function getServiceAccountKeys(): ?array
     {
+        if ($this->serviceAccountKeys === null) {
+            $this->debugger->logOperation("Service account keys not loaded yet", "SecurityHandler");
+        }
         return $this->serviceAccountKeys;
     }
 }
